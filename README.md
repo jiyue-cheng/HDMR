@@ -18,3 +18,7 @@ You can install the dependencies using pip:
 
 ```bash
 pip install torch matplotlib numpy
+
+## Work log link
+
+https://www.yuque.com/jycheng-xbwix/tbndct/mdd218a91zn99g0x?singleDoc# 《HDMR目前进度》 密码：qm71
