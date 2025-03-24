@@ -8,7 +8,7 @@ The goal of this project is to create a model that approximates a target functio
 
 ## Work log link
 
-https://www.yuque.com/jycheng-xbwix/tbndct/mdd218a91zn99g0x?singleDoc# 《HDMR目前进度》 密码：qm71
+https://www.yuque.com/jycheng-xbwix/tbndct/mdd218a91zn99g0x?singleDoc#
 
 ## Requirements
 
