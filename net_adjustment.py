@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 # 定义需要拟合的目标函数
 def target_function(x, y, z):
     # return 5*x**2+7*y**2+3*z**2
-    return 5*x+2*y+7*z+x*y+3*x*z+9*y*z+10*x*y*z+5
-    # return 5*x**2
+    # return 5*x+2*y+7*z+x*y+3*x*z+9*y*z+10*x*y*z+5
+    return 0*x+5
 
 
 # 随机生成变量数据,三阶

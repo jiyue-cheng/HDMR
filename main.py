@@ -6,18 +6,18 @@ import matplotlib.pyplot as plt
 # 定义需要拟合的目标函数
 def target_function(x, y, z):
     # return 5*x**2+7*y**2+3*z**2
-    return 5*x+2*y+7*z+x*y+3*x*z+9*y*z+10*x*y*z+5
-    # return 5*x**2
+    # return 5*x+2*y+7*z+x*y+3*x*z+9*y*z+10*x*y*z+5
+    return 5*x
 
 
 # 随机生成变量数据,三阶
 def generate_data(num_samples):
-    # x1_data = torch.linspace(0, 1, steps=num_samples).unsqueeze(1)
-    # x2_data = torch.linspace(0, 1, steps=num_samples).unsqueeze(1)
-    # x3_data = torch.linspace(0, 1, steps=num_samples).unsqueeze(1)
-    x1_data = torch.rand(num_samples, 1)
-    x2_data = torch.rand(num_samples, 1)
-    x3_data = torch.rand(num_samples, 1)
+    x1_data = torch.linspace(0, 1, steps=num_samples).unsqueeze(1)
+    x2_data = torch.linspace(0, 1, steps=num_samples).unsqueeze(1)
+    x3_data = torch.linspace(0, 1, steps=num_samples).unsqueeze(1)
+     # x1_data = torch.rand(num_samples, 1)
+    # x2_data = torch.rand(num_samples, 1)
+    # x3_data = torch.rand(num_samples, 1)
     target = target_function(x1_data, x2_data, x3_data)   # 只针对自己有定义的对应输入变量和输出的映射关系
     return x1_data, x2_data, x3_data, target
 
@@ -26,7 +26,7 @@ def generate_data(num_samples):
 class HDMR_F0(nn.Module):
     def __init__(self):
         super(HDMR_F0, self).__init__()
-        self.f0 = nn.Parameter(torch.tensor(0.0))  # 直接设置一个简单的可学习常数参数
+        self.f0 = nn.Parameter(torch.tensor(1.0))  # 直接设置一个简单的可学习常数参数
 
     def forward(self, inputs):
         return self.f0 * torch.ones_like(inputs)  # 对每个数据都有常数偏移
@@ -41,8 +41,10 @@ class HDMR_FirstOrder(nn.Module):
         self.output_layer = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
-        out = torch.sigmoid(self.input_layer(x))
-        out = torch.sigmoid(self.hidden_layer(out))
+        # out = torch.sigmoid(self.input_layer(x))
+        # out = torch.sigmoid(self.hidden_layer(out))
+        out = self.input_layer(x)
+        out = self.hidden_layer(out)
         output = self.output_layer(out)
         return output
 
@@ -56,8 +58,10 @@ class HDMR_SecondOrder(nn.Module):
         self.output_layer = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
-        out = torch.sigmoid(self.input_layer(x))
-        out = torch.sigmoid(self.hidden_layer(out))
+        # out = torch.sigmoid(self.input_layer(x))
+        # out = torch.sigmoid(self.hidden_layer(out))
+        out = self.input_layer(x)
+        out = self.hidden_layer(out)
         output = self.output_layer(out)
         return output
 
@@ -71,8 +75,10 @@ class HDMR_ThirdOrder(nn.Module):
         self.output_layer = nn.Linear(hidden_size, 1)
 
     def forward(self, x):
-        out = torch.sigmoid(self.input_layer(x))
-        out = torch.sigmoid(self.hidden_layer(out))
+        # out = torch.sigmoid(self.input_layer(x))
+        # out = torch.sigmoid(self.hidden_layer(out))
+        out = self.input_layer(x)
+        out = self.hidden_layer(out)
         output = self.output_layer(out)
         return output
 
@@ -88,24 +94,24 @@ class HDMR_Network(nn.Module):
 
         self.second_order_modules = nn.ModuleList(
             [HDMR_SecondOrder(NN2) for _ in range(num_vars * (num_vars - 1) // 2)])
-        self.second_order_indices = [(i, j) for i in range(num_vars) for j in range(i + 1, num_vars)]
 
         self.third_order_modules = nn.ModuleList(
             [HDMR_ThirdOrder(NN3) for _ in range(num_vars * (num_vars - 1) * (num_vars - 2) // 6)])
-        self.third_order_indices = [(i, j, k) for i in range(num_vars) for j in range(i + 1, num_vars) for k in
-                                    range(j + 1, num_vars)]
 
-        # 存储indices
+        # 存储indices索引
         self.first_order_indices = list(range(num_vars))
         self.second_order_indices = []
         for i in range(num_vars):
             for j in range(i + 1, num_vars):
-                self.second_order_indices.append((i, j))  # 记录两两配对的索引
+                self.second_order_indices.append((i, j))  # 记录两两配对的索引xy xz yz
+        # self.second_order_indices = [(i, j) for i in range(num_vars) for j in range(i + 1, num_vars)]
         self.third_order_indices = []
         for i in range(num_vars):
             for j in range(i + 1, num_vars):
                 for k in range(j + 1, num_vars):
-                    self.third_order_indices.append((i, j, k))  # 记录三三配对的索引
+                    self.third_order_indices.append((i, j, k))  # 记录三三配对的索引xyz
+        # self.third_order_indices = [(i, j, k) for i in range(num_vars) for j in range(i + 1, num_vars) for k in
+        #                             range(j + 1, num_vars)]
 
         # 用于存储各阶输出
         self.f_j = []
@@ -122,25 +128,28 @@ class HDMR_Network(nn.Module):
         前向传播过程，整合各阶模块的输出结果
         """
         # 重新清零
-        self.first_order_V = []
-        self.second_order_V = []
-        self.third_order_V = []
         self.f_j = []
         self.f_j1j2 = []
         self.f_j1j2j3 = []
+        self.first_order_V = []
+        self.second_order_V = []
+        self.third_order_V = []
 
         # 零阶模块输出
         f0_output = self.f0_module(x[:, 0])
         f0_result = f0_output.unsqueeze(1)
+        # print(f"f0_result:{f0_result}")
 
         # 一阶模块输出之和
         first_order_sum = 0
         for index in range(len(self.first_order_modules)):
             i = self.first_order_indices[index]
             f_j_element = self.first_order_modules[index](x[:, i].unsqueeze(1)).squeeze() - f0_output
+            # f_j_element = f_j_element - torch.mean(f_j_element)  #均值强制为0
             self.f_j.append(f_j_element)
             # 计算每个f_j均值
             mu_j = torch.mean(f_j_element)
+            # print(f"mu_j:{mu_j}")
             # 计算一阶模块方差
             self.first_order_V.append(torch.sum((f_j_element-mu_j) ** 2))
         for element in self.f_j:
@@ -155,9 +164,12 @@ class HDMR_Network(nn.Module):
             i, j = self.second_order_indices[index]
             input_pairs = torch.cat([x[:, i].unsqueeze(1), x[:, j].unsqueeze(1)], dim=1)
             f_j1j2_element = self.second_order_modules[index](input_pairs).squeeze()-self.f_j[i]-self.f_j[j]-f0_output
+            # f_j1j2_element = self.second_order_modules[index](input_pairs).squeeze()-self.f_j[i]-self.f_j[j]+f0_output
+            # f_j1j2_element = f_j1j2_element - torch.mean(f_j1j2_element) #均值强制为0
             self.f_j1j2.append(f_j1j2_element)
             # 计算f_j1j2均值
             mu_j1j2 = torch.mean(f_j1j2_element)
+            # print(f"mu_j1j2:{mu_j1j2}")
             # 计算二阶模块方差
             self.second_order_V.append(torch.sum((f_j1j2_element-mu_j1j2) ** 2))
         for element in self.f_j1j2:
@@ -173,9 +185,13 @@ class HDMR_Network(nn.Module):
             input_triplets = torch.cat([x[:, i].unsqueeze(1), x[:, j].unsqueeze(1), x[:, k].unsqueeze(1)], dim=1)
             f_j1j2j3_element = (self.third_order_modules[index](input_triplets).squeeze()-self.f_j1j2[i]-self.f_j1j2[j]
                                 - self.f_j1j2[k]-self.f_j[i]-self.f_j[j]-self.f_j[k]-f0_output)
+            # f_j1j2j3_element = (self.third_order_modules[index](input_triplets).squeeze()-self.f_j1j2[i]-self.f_j1j2[j]
+            #                     - self.f_j1j2[k]+self.f_j[i]+self.f_j[j]+self.f_j[k]-f0_output)
+            # f_j1j2j3_element = f_j1j2j3_element - torch.mean(f_j1j2j3_element)  #均值强制为0
             self.f_j1j2j3.append(f_j1j2j3_element)
             # 计算f_j1j2j3均值
             mu_j1j2j3 = torch.mean(f_j1j2j3_element)
+            # print(f"mu_j1j2j3:{f_j1j2j3_element}")
             self.third_order_V.append(torch.sum((f_j1j2j3_element-mu_j1j2j3) ** 2))
         for element in self.f_j1j2j3:
             third_order_sum += element
@@ -185,6 +201,7 @@ class HDMR_Network(nn.Module):
 
         # 各阶结果相加
         final_output = f0_result + first_order_result + second_order_result + third_order_result
+        # print(f"final_output:{final_output}")
         # final_output = f0_output + first_order_output + second_order_output + third_order_output
         return final_output
 
@@ -195,6 +212,7 @@ def train_model(model, num_epochs, num_samples):
     训练模型函数
     """
     optimizer = optim.Adam(model.parameters(), lr=0.001)
+
     criterion = nn.MSELoss()
     mse = []
 
@@ -209,15 +227,58 @@ def train_model(model, num_epochs, num_samples):
 
     sensitivities_sum = []
     for epoch in range(num_epochs):
+        if epoch < 1000:
+            for param in model.second_order_modules.parameters():
+                param.requires_grad = False
+            for param in model.third_order_modules.parameters():
+                param.requires_grad = False
+        else:
+            for param in model.parameters():
+                param.requires_grad = True
+        # for f_i in model.f_j:
+        #     for f_ij in model.f_j1j2:
+        #         cov = torch.mean(f_i * f_ij).item()
+        #         print(f"一阶 vs 二阶协方差: {cov}")  # 应接近0
         optimizer.zero_grad()
         outputs = model(inputs)
-        loss = criterion(outputs, target)
+        ortho_loss = 0
+
+        # 一阶与二阶的正交性
+        for f_i in model.f_j:
+            for f_ij in model.f_j1j2:
+                ortho_loss += torch.mean(f_i * f_ij) ** 2
+                cov = torch.mean(f_i * f_ij).item()
+                print(f"一阶 vs 二阶协方差: {cov}")  # 应接近0
+
+
+        # 一阶与三阶的正交性
+        for f_i in model.f_j:
+            for f_ijk in model.f_j1j2j3:
+                ortho_loss += torch.mean(f_i * f_ijk) ** 2
+                cov = torch.mean(f_i * f_ijk).item()
+                print(f"一阶 vs 三阶协方差: {cov}")  # 应接近0
+
+        # 二阶与三阶的正交性
+        for f_ij in model.f_j1j2:
+            for f_ijk in model.f_j1j2j3:
+                ortho_loss += torch.mean(f_ij * f_ijk) ** 2
+                cov = torch.mean(f_ij * f_ijk).item()
+                print(f"二阶 vs 三阶协方差: {cov}")  # 应接近0
+
+        # 总损失
+        lambda_ortho = 0.01  # 可调参数
+
+        mse_loss = criterion(outputs, target)
+
+        loss = mse_loss + lambda_ortho * ortho_loss
         mse.append(loss.detach().numpy())
         loss.backward()
         optimizer.step()
         # 计算目标函数的方差
         mu_outputs = torch.mean(outputs)
+        # print(f"mu_outputs{mu_outputs}")
         outputs_V = torch.sum((outputs - mu_outputs) ** 2)
+        # print(f"outputs_V{outputs_V}")
         # print(outputs_V)
         # 计算各阶灵敏度指标
         first_order_sensitivities = [var_f_j / outputs_V for var_f_j in model.first_order_V]
@@ -230,8 +291,12 @@ def train_model(model, num_epochs, num_samples):
                 result += element
                 # 将每次计算的 result 值添加到列表中
         sensitivities_sum.append(result.item())
-        if epoch % 100 == 0:
+        if (epoch+1) % 100 == 0:
             print(f'Epoch {epoch+1}: Loss = {loss.item()}')
+            print(model.f0_module.f0)
+            # print(model.f_j)
+            # print(model.f_j1j2)
+            # print(model.f_j1j2j3)
             print(first_order_sensitivities)
             print(second_order_sensitivities)
             print(third_order_sensitivities)
